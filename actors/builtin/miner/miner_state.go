@@ -11,11 +11,11 @@ import (
 	errors "github.com/pkg/errors"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	. "github.com/filecoin-project/specs-actors/actors/util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	xc "github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	. "github.com/filecoin-project/specs-actors/actors/util"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
@@ -1123,10 +1123,11 @@ func MinerEligibleForElection(store adt.Store, mAddr addr.Address, mSt *State, p
 	}
 
 	// IP requirement is sufficient to cover fee for a consensus fault
-	electionRequirement := ConsensusFaultPenalty(thisEpochReward)
-	if mSt.InitialPledge.LessThan(electionRequirement) {
-		return false, nil
-	}
+	// TODO: This check needs to be revised or scrapped (ISSUE NUMBER)
+	//electionRequirement := ConsensusFaultPenalty(thisEpochReward)
+	//if mSt.InitialPledge.LessThan(electionRequirement) {
+	//	return false, nil
+	//}
 
 	return true, nil
 }
