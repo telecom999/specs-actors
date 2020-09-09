@@ -22,7 +22,7 @@ type ActorMigration struct {
 	StateMigration StateMigration
 }
 
-var migrations = []ActorMigration{
+var migrations = []ActorMigration{ // nolint:varcheck,deadcode,unused
 	{
 		InCodeCID:      builtin0.AccountActorCodeID,
 		OutCodeCID:     builtin.AccountActorCodeID,

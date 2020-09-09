@@ -13,6 +13,8 @@ github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03 h1:2pMX
 github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod h1:+viYnvGtUTgJRdy6oaeF4MTFKAfatX071MPDPBL11EQ=
 github.com/filecoin-project/go-hamt-ipld v0.1.3 h1:CfHEyx0cYO3NP91yExqD3xxqbb/Ale+vHQZOyqQGfxk=
 github.com/filecoin-project/go-hamt-ipld v0.1.3/go.mod h1:REjlnb1+pe+fM8Q1OMt2fPZXn0KxWqJ4S7ZeS+2IksQ=
+github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
+github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0/go.mod h1:7aWZdaQ1b16BVoQUYR+eEvrDCGJoPLxFpDynFjYfBjI=
 github.com/filecoin-project/go-state-types v0.0.0-20200905071437-95828685f9df h1:m2esXSuGBkuXlRyCsl1a/7/FkFam63o1OzIgzaHtOfI=
@@ -21,6 +23,10 @@ github.com/filecoin-project/go-state-types v0.0.0-20200908000712-3ca0d2890090 h1
 github.com/filecoin-project/go-state-types v0.0.0-20200908000712-3ca0d2890090/go.mod h1:IQ0MBPnonv35CJHtWSN3YY1Hz2gkPru1Q9qoaYLxx9I=
 github.com/filecoin-project/specs-actors v0.9.6 h1:U3PU4jrHcmXxfEP0CC1fGETx4RrXlm5RYJeuT5eWjhI=
 github.com/filecoin-project/specs-actors v0.9.6/go.mod h1:wM2z+kwqYgXn5Z7scV1YHLyd1Q1cy0R8HfTIWQ0BFGU=
+github.com/filecoin-project/specs-actors v0.9.7 h1:7PAZ8kdqwBdmgf/23FCkQZLCXcVu02XJrkpkhBikiA8=
+github.com/filecoin-project/specs-actors v0.9.7/go.mod h1:wM2z+kwqYgXn5Z7scV1YHLyd1Q1cy0R8HfTIWQ0BFGU=
+github.com/filecoin-project/specs-actors v0.9.8-0.20200908030647-dc6c6d5e93cc h1:cmAKZP5nM85enpKi1aSLrCQ8OfyMyKyKdjHiotYzc8s=
+github.com/filecoin-project/specs-actors v0.9.8-0.20200908030647-dc6c6d5e93cc/go.mod h1:c27QV5MbY2V1756K7gpb/uCA+NzRl5EQvxVUPWk5ssA=
 github.com/gogo/protobuf v1.3.1 h1:DqDEcV5aeaTmdFBePNpYsp3FlcVH/2ISVVM9Qf8PSls=
 github.com/gogo/protobuf v1.3.1/go.mod h1:SlYgWuQ5SjCEi6WLHjHCa1yvBfUnHcTbrrZtXPKa29o=
 github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
