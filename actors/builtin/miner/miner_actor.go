@@ -626,11 +626,12 @@ func (a Actor) ProveCommitSector(rt Runtime, params *ProveCommitSectorParams) *a
 		RegisteredSealProof: precommit.Info.SealProof,
 	})
 
-	_, code := rt.Send(
+	code := rt.Send(
 		builtin.StoragePowerActorAddr,
 		builtin.MethodsPower.SubmitPoRepForBulkVerify,
 		svi,
 		abi.NewTokenAmount(0),
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, code, "failed to submit proof for bulk verification")
 	return nil
@@ -677,7 +678,7 @@ func (a Actor) ConfirmSectorProofsValid(rt Runtime, params *builtin.ConfirmSecto
 		// Check (and activate) storage deals associated to sector. Abort if checks failed.
 		// TODO: we should batch these calls...
 		// https://github.com/filecoin-project/specs-actors/issues/474
-		_, code := rt.Send(
+		code := rt.Send(
 			builtin.StorageMarketActorAddr,
 			builtin.MethodsMarket.ActivateDeals,
 			&market.ActivateDealsParams{
@@ -685,6 +686,7 @@ func (a Actor) ConfirmSectorProofsValid(rt Runtime, params *builtin.ConfirmSecto
 				SectorExpiry: precommit.Info.Expiration,
 			},
 			abi.NewTokenAmount(0),
+			&cbg.Deferred{},
 		)
 
 		if code != exitcode.Ok {
@@ -1381,11 +1383,12 @@ func (a Actor) ReportConsensusFault(rt Runtime, params *ReportConsensusFaultPara
 	rt.Readonly(&st)
 
 	// Notify power actor with lock-up total being removed.
-	_, code = rt.Send(
+	code = rt.Send(
 		builtin.StoragePowerActorAddr,
 		builtin.MethodsPower.OnConsensusFault,
 		&st.LockedFunds,
 		abi.NewTokenAmount(0),
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, code, "failed to notify power actor on consensus fault")
 
@@ -1437,7 +1440,7 @@ func (a Actor) WithdrawBalance(rt Runtime, params *WithdrawBalanceParams) *abi.E
 	Assert(amountWithdrawn.GreaterThanEqual(big.Zero()))
 	Assert(amountWithdrawn.LessThanEqual(currBalance))
 
-	_, code := rt.Send(info.Owner, builtin.MethodSend, nil, amountWithdrawn)
+	code := rt.Send(info.Owner, builtin.MethodSend, nil, amountWithdrawn, &cbg.Deferred{})
 	builtin.RequireSuccess(rt, code, "failed to withdraw balance")
 
 	pledgeDelta := newlyVested.Neg()
@@ -1787,7 +1790,7 @@ func enrollCronEvent(rt Runtime, eventEpoch abi.ChainEpoch, callbackPayload *Cro
 	if err != nil {
 		rt.Abortf(exitcode.ErrIllegalArgument, "failed to serialize payload: %v", err)
 	}
-	_, code := rt.Send(
+	code := rt.Send(
 		builtin.StoragePowerActorAddr,
 		builtin.MethodsPower.EnrollCronEvent,
 		&power.EnrollCronEventParams{
@@ -1795,6 +1798,7 @@ func enrollCronEvent(rt Runtime, eventEpoch abi.ChainEpoch, callbackPayload *Cro
 			Payload:    payload.Bytes(),
 		},
 		abi.NewTokenAmount(0),
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, code, "failed to enroll cron event")
 }
@@ -1803,7 +1807,7 @@ func requestUpdatePower(rt Runtime, delta PowerPair) {
 	if delta.IsZero() {
 		return
 	}
-	_, code := rt.Send(
+	code := rt.Send(
 		builtin.StoragePowerActorAddr,
 		builtin.MethodsPower.UpdateClaimedPower,
 		&power.UpdateClaimedPowerParams{
@@ -1811,6 +1815,7 @@ func requestUpdatePower(rt Runtime, delta PowerPair) {
 			QualityAdjustedDelta: delta.QA,
 		},
 		abi.NewTokenAmount(0),
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, code, "failed to update power with %v", delta)
 }
@@ -1818,7 +1823,7 @@ func requestUpdatePower(rt Runtime, delta PowerPair) {
 func requestTerminateDeals(rt Runtime, epoch abi.ChainEpoch, dealIDs []abi.DealID) {
 	for len(dealIDs) > 0 {
 		size := min64(cbg.MaxLength, uint64(len(dealIDs)))
-		_, code := rt.Send(
+		code := rt.Send(
 			builtin.StorageMarketActorAddr,
 			builtin.MethodsMarket.OnMinerSectorsTerminate,
 			&market.OnMinerSectorsTerminateParams{
@@ -1826,6 +1831,7 @@ func requestTerminateDeals(rt Runtime, epoch abi.ChainEpoch, dealIDs []abi.DealI
 				DealIDs: dealIDs[:size],
 			},
 			abi.NewTokenAmount(0),
+			&cbg.Deferred{},
 		)
 		builtin.RequireSuccess(rt, code, "failed to terminate deals, exit code %v", code)
 		dealIDs = dealIDs[size:]
@@ -1959,7 +1965,8 @@ func terminateMiner(rt Runtime) {
 
 // Requests the storage market actor compute the unsealed sector CID from a sector's deals.
 func requestUnsealedSectorCID(rt Runtime, proofType abi.RegisteredSealProof, dealIDs []abi.DealID) cid.Cid {
-	ret, code := rt.Send(
+	var unsealedCID cbg.CborCid
+	code := rt.Send(
 		builtin.StorageMarketActorAddr,
 		builtin.MethodsMarket.ComputeDataCommitment,
 		&market.ComputeDataCommitmentParams{
@@ -1967,16 +1974,16 @@ func requestUnsealedSectorCID(rt Runtime, proofType abi.RegisteredSealProof, dea
 			DealIDs:    dealIDs,
 		},
 		abi.NewTokenAmount(0),
+		&unsealedCID,
 	)
 	builtin.RequireSuccess(rt, code, "failed request for unsealed sector CID for deals %v", dealIDs)
-	var unsealedCID cbg.CborCid
-	AssertNoError(ret.Into(&unsealedCID))
 	return cid.Cid(unsealedCID)
 }
 
 func requestDealWeight(rt Runtime, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch) market.VerifyDealsForActivationReturn {
 	var dealWeights market.VerifyDealsForActivationReturn
-	ret, code := rt.Send(
+
+	code := rt.Send(
 		builtin.StorageMarketActorAddr,
 		builtin.MethodsMarket.VerifyDealsForActivation,
 		&market.VerifyDealsForActivationParams{
@@ -1985,9 +1992,9 @@ func requestDealWeight(rt Runtime, dealIDs []abi.DealID, sectorStart, sectorExpi
 			SectorExpiry: sectorExpiry,
 		},
 		abi.NewTokenAmount(0),
+		&dealWeights,
 	)
 	builtin.RequireSuccess(rt, code, "failed to verify deals and get deal weight")
-	AssertNoError(ret.Into(&dealWeights))
 	return dealWeights
 
 }
@@ -2013,21 +2020,17 @@ func commitWorkerKeyChange(rt Runtime) *abi.EmptyValue {
 // Requests the current epoch target block reward from the reward actor.
 // return value includes reward, smoothed estimate of reward, and baseline power
 func requestCurrentEpochBlockReward(rt Runtime) reward.ThisEpochRewardReturn {
-	rwret, code := rt.Send(builtin.RewardActorAddr, builtin.MethodsReward.ThisEpochReward, nil, big.Zero())
-	builtin.RequireSuccess(rt, code, "failed to check epoch baseline power")
 	var ret reward.ThisEpochRewardReturn
-	err := rwret.Into(&ret)
-	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal target power value")
+	code := rt.Send(builtin.RewardActorAddr, builtin.MethodsReward.ThisEpochReward, nil, big.Zero(), &ret)
+	builtin.RequireSuccess(rt, code, "failed to check epoch baseline power")
 	return ret
 }
 
 // Requests the current network total power and pledge from the power actor.
 func requestCurrentTotalPower(rt Runtime) *power.CurrentTotalPowerReturn {
-	pwret, code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.CurrentTotalPower, nil, big.Zero())
-	builtin.RequireSuccess(rt, code, "failed to check current power")
 	var pwr power.CurrentTotalPowerReturn
-	err := pwret.Into(&pwr)
-	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal power total value")
+	code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.CurrentTotalPower, nil, big.Zero(), &pwr)
+	builtin.RequireSuccess(rt, code, "failed to check current power")
 	return &pwr
 }
 
@@ -2076,13 +2079,9 @@ func resolveWorkerAddress(rt Runtime, raw addr.Address) addr.Address {
 	}
 
 	if raw.Protocol() != addr.BLS {
-		ret, code := rt.Send(resolved, builtin.MethodsAccount.PubkeyAddress, nil, big.Zero())
-		builtin.RequireSuccess(rt, code, "failed to fetch account pubkey from %v", resolved)
 		var pubkey addr.Address
-		err := ret.Into(&pubkey)
-		if err != nil {
-			rt.Abortf(exitcode.ErrSerialization, "failed to deserialize address result: %v", ret)
-		}
+		code := rt.Send(resolved, builtin.MethodsAccount.PubkeyAddress, nil, big.Zero(), &pubkey)
+		builtin.RequireSuccess(rt, code, "failed to fetch account pubkey from %v", resolved)
 		if pubkey.Protocol() != addr.BLS {
 			rt.Abortf(exitcode.ErrIllegalArgument, "worker account %v must have BLS pubkey, was %v", resolved, pubkey.Protocol())
 		}
@@ -2092,14 +2091,14 @@ func resolveWorkerAddress(rt Runtime, raw addr.Address) addr.Address {
 
 func burnFunds(rt Runtime, amt abi.TokenAmount) {
 	if amt.GreaterThan(big.Zero()) {
-		_, code := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, amt)
+		code := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, amt, &cbg.Deferred{})
 		builtin.RequireSuccess(rt, code, "failed to burn funds")
 	}
 }
 
 func notifyPledgeChanged(rt Runtime, pledgeDelta abi.TokenAmount) {
 	if !pledgeDelta.IsZero() {
-		_, code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.UpdatePledgeTotal, &pledgeDelta, big.Zero())
+		code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.UpdatePledgeTotal, &pledgeDelta, big.Zero(), &cbg.Deferred{})
 		builtin.RequireSuccess(rt, code, "failed to update total pledge")
 	}
 }

@@ -472,20 +472,15 @@ func executeTransactionIfApproved(rt runtime.Runtime, st State, txnID TxnID, txn
 			rt.Abortf(exitcode.ErrInsufficientFunds, "insufficient funds unlocked: %v", err)
 		}
 
-		var ret runtime.SendReturn
 		// A sufficient number of approvals have arrived and sufficient funds have been unlocked: relay the message and delete from pending queue.
-		ret, code = rt.Send(
+		code = rt.Send(
 			txn.To,
 			txn.Method,
 			runtime.CBORBytes(txn.Params),
 			txn.Value,
+			&out,
 		)
 		applied = true
-
-		// Pass the return value through uninterpreted with the expectation that serializing into a CBORBytes never fails
-		// since it just copies the bytes.
-		err := ret.Into(&out)
-		builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to deserialize result")
 
 		// This could be rearranged to happen inside the first state transaction, before the send().
 		rt.Transaction(&st, func() {
@@ -500,6 +495,9 @@ func executeTransactionIfApproved(rt runtime.Runtime, st State, txnID TxnID, txn
 			builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to flush pending transactions")
 		})
 	}
+
+	// Pass the return value through uninterpreted with the expectation that serializing into a CBORBytes never fails
+	// since it just copies the bytes.
 
 	return applied, out, code
 }

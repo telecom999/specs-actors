@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	initact "github.com/filecoin-project/specs-actors/actors/builtin/init"
@@ -106,7 +107,8 @@ func (a Actor) CreateMiner(rt Runtime, params *CreateMinerParams) *CreateMinerRe
 	err := ctorParams.MarshalCBOR(ctorParamBuf)
 	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to serialize miner constructor params %v", ctorParams)
 
-	ret, code := rt.Send(
+	var addresses initact.ExecReturn
+	code := rt.Send(
 		builtin.InitActorAddr,
 		builtin.MethodsInit.Exec,
 		&initact.ExecParams{
@@ -114,11 +116,9 @@ func (a Actor) CreateMiner(rt Runtime, params *CreateMinerParams) *CreateMinerRe
 			ConstructorParams: ctorParamBuf.Bytes(),
 		},
 		rt.ValueReceived(), // Pass on any value to the new actor.
+		&addresses,
 	)
 	builtin.RequireSuccess(rt, code, "failed to init new actor")
-	var addresses initact.ExecReturn
-	err = ret.Into(&addresses)
-	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal exec return value %v", ret)
 
 	var st State
 	rt.Transaction(&st, func() {
@@ -218,11 +218,12 @@ func (a Actor) OnEpochTickEnd(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	})
 
 	// update network KPI in RewardActor
-	_, code := rt.Send(
+	code := rt.Send(
 		builtin.RewardActorAddr,
 		builtin.MethodsReward.UpdateNetworkKPI,
 		&st.ThisEpochRawBytePower,
 		abi.NewTokenAmount(0),
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, code, "failed to update network KPI with Reward Actor")
 
@@ -404,11 +405,12 @@ func (a Actor) processBatchProofVerifies(rt Runtime) {
 		}
 
 		// The exit code is explicitly ignored
-		_, _ = rt.Send(
+		rt.Send(
 			m,
 			builtin.MethodsMiner.ConfirmSectorProofsValid,
 			&builtin.ConfirmSectorProofsParams{Sectors: successful},
 			abi.NewTokenAmount(0),
+			&cbg.Deferred{},
 		)
 	}
 }
@@ -441,11 +443,12 @@ func (a Actor) processDeferredCronEvents(rt Runtime) {
 	})
 	failedMinerCrons := make([]addr.Address, 0)
 	for _, event := range cronEvents {
-		_, code := rt.Send(
+		code := rt.Send(
 			event.MinerAddr,
 			builtin.MethodsMiner.OnDeferredCronEvent,
 			runtime.CBORBytes(event.CallbackPayload),
 			abi.NewTokenAmount(0),
+			&cbg.Deferred{},
 		)
 		// If a callback fails, this actor continues to invoke other callbacks
 		// and persists state removing the failed event from the event queue. It won't be tried again.

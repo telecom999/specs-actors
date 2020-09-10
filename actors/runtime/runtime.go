@@ -97,7 +97,7 @@ type Runtime interface {
 	// If the invoked method does not return successfully, its state changes (and that of any messages it sent in turn)
 	// will be rolled back.
 	// The result is never a bare nil, but may be (a wrapper of) abi.Empty.
-	Send(toAddr addr.Address, methodNum abi.MethodNum, params CBORMarshaler, value abi.TokenAmount) (SendReturn, exitcode.ExitCode)
+	Send(toAddr addr.Address, methodNum abi.MethodNum, params CBORMarshaler, value abi.TokenAmount, out CBORUnmarshaler) exitcode.ExitCode
 
 	// Halts execution upon an error from which the receiver cannot recover. The caller will receive the exitcode and
 	// an empty return value. State changes made within this call will be rolled back.

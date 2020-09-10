@@ -104,7 +104,7 @@ func (a Actor) WithdrawBalance(rt Runtime, params *WithdrawBalanceParams) *abi.E
 		amountExtracted = ex
 	})
 
-	_, code := rt.Send(recipient, builtin.MethodSend, nil, amountExtracted)
+	code := rt.Send(recipient, builtin.MethodSend, nil, amountExtracted, &cbg.Deferred{})
 	builtin.RequireSuccess(rt, code, "failed to send funds")
 	return nil
 }
@@ -242,7 +242,7 @@ func (a Actor) PublishStorageDeals(rt Runtime, params *PublishStorageDealsParams
 			resolvedClient, ok := resolvedAddrs[deal.Proposal.Client]
 			builtin.RequireParam(rt, ok, "could not get resolvedClient client address")
 
-			_, code := rt.Send(
+			code := rt.Send(
 				builtin.VerifiedRegistryActorAddr,
 				builtin.MethodsVerifiedRegistry.UseBytes,
 				&verifreg.UseBytesParams{
@@ -250,6 +250,7 @@ func (a Actor) PublishStorageDeals(rt Runtime, params *PublishStorageDealsParams
 					DealSize: big.NewIntUnsigned(uint64(deal.Proposal.PieceSize)),
 				},
 				abi.NewTokenAmount(0),
+				cbg.Deferred{},
 			)
 			builtin.RequireSuccess(rt, code, "failed to add verified deal for client: %v", deal.Proposal.Client)
 		}
@@ -548,7 +549,7 @@ func (a Actor) CronTick(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	})
 
 	for _, d := range timedOutVerifiedDeals {
-		_, code := rt.Send(
+		code := rt.Send(
 			builtin.VerifiedRegistryActorAddr,
 			builtin.MethodsVerifiedRegistry.RestoreBytes,
 			&verifreg.RestoreBytesParams{
@@ -556,6 +557,7 @@ func (a Actor) CronTick(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 				DealSize: big.NewIntUnsigned(uint64(d.PieceSize)),
 			},
 			abi.NewTokenAmount(0),
+			cbg.Deferred{},
 		)
 
 		if !code.IsSuccess() {
@@ -565,7 +567,7 @@ func (a Actor) CronTick(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	}
 
 	if !amountSlashed.IsZero() {
-		_, e := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, amountSlashed)
+		e := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, amountSlashed, &cbg.Deferred{})
 		builtin.RequireSuccess(rt, e, "expected send to burnt funds actor to succeed")
 	}
 
@@ -748,20 +750,16 @@ func getDealProposal(proposals *DealArray, dealID abi.DealID) (*DealProposal, er
 
 // Requests the current epoch target block reward from the reward actor.
 func requestCurrentBaselinePower(rt Runtime) abi.StoragePower {
-	rwret, code := rt.Send(builtin.RewardActorAddr, builtin.MethodsReward.ThisEpochReward, nil, big.Zero())
-	builtin.RequireSuccess(rt, code, "failed to check epoch baseline power")
 	var ret reward.ThisEpochRewardReturn
-	err := rwret.Into(&ret)
-	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal target power value")
+	code := rt.Send(builtin.RewardActorAddr, builtin.MethodsReward.ThisEpochReward, nil, big.Zero(), &ret)
+	builtin.RequireSuccess(rt, code, "failed to check epoch baseline power")
 	return ret.ThisEpochBaselinePower
 }
 
 // Requests the current network total power and pledge from the power actor.
 func requestCurrentNetworkPower(rt Runtime) (rawPower, qaPower abi.StoragePower) {
-	pwret, code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.CurrentTotalPower, nil, big.Zero())
-	builtin.RequireSuccess(rt, code, "failed to check current power")
 	var pwr power.CurrentTotalPowerReturn
-	err := pwret.Into(&pwr)
-	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal power total value")
+	code := rt.Send(builtin.StoragePowerActorAddr, builtin.MethodsPower.CurrentTotalPower, nil, big.Zero(), &pwr)
+	builtin.RequireSuccess(rt, code, "failed to check current power")
 	return pwr.RawBytePower, pwr.QualityAdjPower
 }

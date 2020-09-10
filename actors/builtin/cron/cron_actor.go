@@ -2,6 +2,7 @@ package cron
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -36,7 +37,8 @@ func (a Actor) EpochTick(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue 
 	var st State
 	rt.Readonly(&st)
 	for _, entry := range st.Entries {
-		_, _ = rt.Send(entry.Receiver, entry.MethodNum, nil, abi.NewTokenAmount(0))
+		var ignore cbg.Deferred
+		_ = rt.Send(entry.Receiver, entry.MethodNum, nil, abi.NewTokenAmount(0), &ignore)
 		// Any error and return value are ignored.
 	}
 

@@ -2,6 +2,7 @@ package reward
 
 import (
 	"github.com/filecoin-project/go-address"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -106,10 +107,10 @@ func (a Actor) AwardBlockReward(rt runtime.Runtime, params *AwardBlockRewardPara
 		"reward payable %v + penalty %v exceeds balance %v", rewardPayable, penalty, priorBalance)
 
 	// if this fails, we can assume the miner is responsible and avoid failing here.
-	_, code := rt.Send(minerAddr, builtin.MethodsMiner.AddLockedFund, &rewardPayable, rewardPayable)
+	code := rt.Send(minerAddr, builtin.MethodsMiner.AddLockedFund, &rewardPayable, rewardPayable, &cbg.Deferred{})
 	if !code.IsSuccess() {
 		rt.Log(runtime.ERROR, "failed to send AddLockedFund call to the miner actor with funds: %v, code: %v", rewardPayable, code)
-		_, code := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, rewardPayable)
+		code := rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, rewardPayable, &cbg.Deferred{})
 		if !code.IsSuccess() {
 			rt.Log(runtime.ERROR, "failed to send unsent reward to the burnt funds actor, code: %v", code)
 		}
@@ -117,7 +118,7 @@ func (a Actor) AwardBlockReward(rt runtime.Runtime, params *AwardBlockRewardPara
 
 	// Burn the penalty amount.
 	if penalty.GreaterThan(abi.NewTokenAmount(0)) {
-		_, code = rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, penalty)
+		code = rt.Send(builtin.BurntFundsActorAddr, builtin.MethodSend, nil, penalty, &cbg.Deferred{})
 		builtin.RequireSuccess(rt, code, "failed to send penalty to burnt funds actor")
 	}
 

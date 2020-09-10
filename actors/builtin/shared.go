@@ -6,9 +6,9 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	runtime "github.com/filecoin-project/specs-actors/actors/runtime"
-	autil "github.com/filecoin-project/specs-actors/actors/util"
 )
 
 ///// Code shared by multiple built-in actors. /////
@@ -39,10 +39,9 @@ func RequireNoErr(rt runtime.Runtime, err error, defaultExitCode exitcode.ExitCo
 }
 
 func RequestMinerControlAddrs(rt runtime.Runtime, minerAddr addr.Address) (ownerAddr addr.Address, workerAddr addr.Address, controlAddrs []addr.Address) {
-	ret, code := rt.Send(minerAddr, MethodsMiner.ControlAddresses, nil, abi.NewTokenAmount(0))
-	RequireSuccess(rt, code, "failed fetching control addresses")
 	var addrs MinerAddrs
-	autil.AssertNoError(ret.Into(&addrs))
+	code := rt.Send(minerAddr, MethodsMiner.ControlAddresses, nil, abi.NewTokenAmount(0), &addrs)
+	RequireSuccess(rt, code, "failed fetching control addresses")
 
 	return addrs.Owner, addrs.Worker, addrs.ControlAddrs
 }
@@ -68,7 +67,7 @@ func ResolveToIDAddr(rt runtime.Runtime, address addr.Address) (addr.Address, er
 	}
 
 	// send 0 balance to the account so an ID address for it is created and then try to resolve
-	_, code := rt.Send(address, MethodSend, nil, abi.NewTokenAmount(0))
+	code := rt.Send(address, MethodSend, nil, abi.NewTokenAmount(0), &cbg.Deferred{})
 	if !code.IsSuccess() {
 		return address, code.Wrapf("failed to send zero balance to address %v", address)
 	}

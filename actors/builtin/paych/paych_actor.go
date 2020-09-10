@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -181,7 +182,7 @@ func (pca Actor) UpdateChannelState(rt runtime.Runtime, params *UpdateChannelSta
 
 	if sv.Extra != nil {
 
-		_, code := rt.Send(
+		code := rt.Send(
 			sv.Extra.Actor,
 			sv.Extra.Method,
 			&PaymentVerifyParams{
@@ -189,6 +190,7 @@ func (pca Actor) UpdateChannelState(rt runtime.Runtime, params *UpdateChannelSta
 				params.Proof,
 			},
 			abi.NewTokenAmount(0),
+			&cbg.Deferred{},
 		)
 		builtin.RequireSuccess(rt, code, "spend voucher verification failed")
 	}
@@ -308,11 +310,12 @@ func (pca Actor) Collect(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue 
 	}
 
 	// send ToSend to "To"
-	_, codeTo := rt.Send(
+	codeTo := rt.Send(
 		st.To,
 		builtin.MethodSend,
 		nil,
 		st.ToSend,
+		&cbg.Deferred{},
 	)
 	builtin.RequireSuccess(rt, codeTo, "Failed to send funds to `To`")
 
