@@ -111,7 +111,7 @@ func (a Actor) WithdrawBalance(rt Runtime, params *WithdrawBalanceParams) *abi.E
 
 // Deposits the received value into the balance held in escrow.
 func (a Actor) AddBalance(rt Runtime, providerOrClientAddress *addr.Address) *abi.EmptyValue {
-	msgValue := rt.Message().ValueReceived()
+	msgValue := rt.ValueReceived()
 	builtin.RequireParam(rt, msgValue.GreaterThan(big.Zero()), "balance to add must be greater than zero")
 
 	// only signing parties can add balance for client AND provider.
@@ -166,7 +166,7 @@ func (a Actor) PublishStorageDeals(rt Runtime, params *PublishStorageDealsParams
 	}
 
 	_, worker, _ := builtin.RequestMinerControlAddrs(rt, provider)
-	if worker != rt.Message().Caller() {
+	if worker != rt.Caller() {
 		rt.Abortf(exitcode.ErrForbidden, "caller is not provider %v", provider)
 	}
 
@@ -274,7 +274,7 @@ type VerifyDealsForActivationReturn struct {
 // The weight is defined as the sum, over all deals in the set, of the product of deal size and duration.
 func (A Actor) VerifyDealsForActivation(rt Runtime, params *VerifyDealsForActivationParams) *VerifyDealsForActivationReturn {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 
 	var st State
 	rt.Readonly(&st)
@@ -298,7 +298,7 @@ type ActivateDealsParams struct {
 // update the market's internal state accordingly.
 func (a Actor) ActivateDeals(rt Runtime, params *ActivateDealsParams) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 	currEpoch := rt.CurrEpoch()
 
 	var st State
@@ -374,7 +374,7 @@ func (a Actor) ComputeDataCommitment(rt Runtime, params *ComputeDataCommitmentPa
 		})
 	}
 
-	commd, err := rt.Syscalls().ComputeUnsealedSectorCID(params.SectorType, pieces)
+	commd, err := rt.ComputeUnsealedSectorCID(params.SectorType, pieces)
 	if err != nil {
 		rt.Abortf(exitcode.ErrIllegalArgument, "failed to compute unsealed sector CID: %s", err)
 	}
@@ -392,7 +392,7 @@ type OnMinerSectorsTerminateParams struct {
 // amount to client.
 func (a Actor) OnMinerSectorsTerminate(rt Runtime, params *OnMinerSectorsTerminateParams) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 
 	var st State
 	rt.Transaction(&st, func() {

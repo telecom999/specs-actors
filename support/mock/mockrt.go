@@ -173,11 +173,6 @@ func (rt *Runtime) NetworkVersion() network.Version {
 	return rt.networkVersion
 }
 
-func (rt *Runtime) Message() runtime.Message {
-	rt.requireInCall()
-	return rt
-}
-
 func (rt *Runtime) CurrEpoch() abi.ChainEpoch {
 	rt.requireInCall()
 	return rt.epoch
@@ -314,16 +309,6 @@ func (rt *Runtime) GetRandomnessFromTickets(tag crypto.DomainSeparationTag, epoc
 	return exp.out
 }
 
-func (rt *Runtime) State() runtime.StateHandle {
-	rt.requireInCall()
-	return rt
-}
-
-func (rt *Runtime) Store() runtime.Store {
-	// requireInCall omitted because it makes using this mock runtime as a store awkward.
-	return rt
-}
-
 func (rt *Runtime) Send(toAddr addr.Address, methodNum abi.MethodNum, params runtime.CBORMarshaler, value abi.TokenAmount) (runtime.SendReturn, exitcode.ExitCode) {
 	rt.requireInCall()
 	if rt.inTransaction {
@@ -404,11 +389,6 @@ func (rt *Runtime) Abortf(errExitCode exitcode.ExitCode, msg string, args ...int
 	rt.requireInCall()
 	rt.t.Logf("Mock Runtime Abort ExitCode: %v Reason: %s", errExitCode, fmt.Sprintf(msg, args...))
 	panic(abort{errExitCode, fmt.Sprintf(msg, args...)})
-}
-
-func (rt *Runtime) Syscalls() runtime.Syscalls {
-	rt.requireInCall()
-	return rt
 }
 
 func (rt *Runtime) Context() context.Context {
@@ -512,11 +492,11 @@ func (rt *Runtime) Create(obj runtime.CBORMarshaler) {
 	if rt.state.Defined() {
 		rt.Abortf(exitcode.SysErrorIllegalActor, "state already constructed")
 	}
-	rt.state = rt.Store().Put(obj)
+	rt.state = rt.Put(obj)
 }
 
 func (rt *Runtime) Readonly(st runtime.CBORUnmarshaler) {
-	found := rt.Store().Get(rt.state, st)
+	found := rt.Get(rt.state, st)
 	if !found {
 		panic(fmt.Sprintf("actor state not found: %v", rt.state))
 	}
@@ -767,7 +747,7 @@ func (rt *Runtime) SetEpoch(epoch abi.ChainEpoch) {
 }
 
 func (rt *Runtime) ReplaceState(o runtime.CBORMarshaler) {
-	rt.state = rt.Store().Put(o)
+	rt.state = rt.Put(o)
 }
 
 func (rt *Runtime) SetCirculatingSupply(amt abi.TokenAmount) {

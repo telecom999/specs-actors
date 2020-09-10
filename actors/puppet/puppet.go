@@ -34,7 +34,7 @@ var _ runtime.Invokee = Actor{}
 func (a Actor) Constructor(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 
-	rt.State().Create(&State{})
+	rt.Create(&State{})
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (a Actor) RuntimeTransactionMarshalCBORFailure(rt runtime.Runtime, _ *abi.E
 
 	var st State
 
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		st.OptFailToMarshalCBOR = []*FailToMarshalCBOR{{}}
 	})
 

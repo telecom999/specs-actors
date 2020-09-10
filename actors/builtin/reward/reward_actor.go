@@ -34,7 +34,7 @@ func (a Actor) Constructor(rt runtime.Runtime, currRealizedPower *abi.StoragePow
 		return nil // linter does not understand abort exiting
 	}
 	st := ConstructState(*currRealizedPower)
-	rt.State().Create(st)
+	rt.Create(st)
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (a Actor) AwardBlockReward(rt runtime.Runtime, params *AwardBlockRewardPara
 	penalty := abi.NewTokenAmount(0)
 	totalReward := big.Zero()
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		blockReward := big.Mul(st.ThisEpochReward, big.NewInt(params.WinCount))
 		blockReward = big.Div(blockReward, big.NewInt(builtin.ExpectedLeadersPerEpoch))
 		totalReward = big.Add(blockReward, params.GasReward)
@@ -137,7 +137,7 @@ func (a Actor) ThisEpochReward(rt runtime.Runtime, _ *abi.EmptyValue) *ThisEpoch
 	rt.ValidateImmediateCallerAcceptAny()
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	return &ThisEpochRewardReturn{
 		ThisEpochReward:         st.ThisEpochReward,
 		ThisEpochBaselinePower:  st.ThisEpochBaselinePower,
@@ -155,7 +155,7 @@ func (a Actor) UpdateNetworkKPI(rt runtime.Runtime, currRealizedPower *abi.Stora
 	}
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		prev := st.Epoch
 		// if there were null runs catch up the computation until
 		// st.Epoch == rt.CurrEpoch()

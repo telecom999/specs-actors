@@ -116,7 +116,7 @@ func (a Actor) Constructor(rt runtime.Runtime, params *ConstructorParams) *abi.E
 	st.PendingTxns = pending
 	st.InitialBalance = abi.NewTokenAmount(0)
 	if params.UnlockDuration != 0 {
-		st.InitialBalance = rt.Message().ValueReceived()
+		st.InitialBalance = rt.ValueReceived()
 		st.UnlockDuration = params.UnlockDuration
 		st.StartEpoch = rt.CurrEpoch()
 	}
@@ -145,7 +145,7 @@ type ProposeReturn struct {
 
 func (a Actor) Propose(rt runtime.Runtime, params *ProposeParams) *ProposeReturn {
 	rt.ValidateImmediateCallerType(builtin.CallerTypesSignable...)
-	proposer := rt.Message().Caller()
+	proposer := rt.Caller()
 
 	if params.Value.Sign() < 0 {
 		rt.Abortf(exitcode.ErrIllegalArgument, "proposed value must be non-negative, was %v", params.Value)
@@ -210,7 +210,7 @@ type ApproveReturn struct {
 
 func (a Actor) Approve(rt runtime.Runtime, params *TxnIDParams) *ApproveReturn {
 	rt.ValidateImmediateCallerType(builtin.CallerTypesSignable...)
-	callerAddr := rt.Message().Caller()
+	callerAddr := rt.Caller()
 
 	var st State
 	var txn *Transaction
@@ -243,7 +243,7 @@ func (a Actor) Approve(rt runtime.Runtime, params *TxnIDParams) *ApproveReturn {
 
 func (a Actor) Cancel(rt runtime.Runtime, params *TxnIDParams) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.CallerTypesSignable...)
-	callerAddr := rt.Message().Caller()
+	callerAddr := rt.Caller()
 
 	var st State
 	rt.Transaction(&st, func() {
@@ -265,7 +265,7 @@ func (a Actor) Cancel(rt runtime.Runtime, params *TxnIDParams) *abi.EmptyValue {
 		}
 
 		// confirm the hashes match
-		calculatedHash, err := ComputeProposalHash(&txn, rt.Syscalls().HashBlake2b)
+		calculatedHash, err := ComputeProposalHash(&txn, rt.HashBlake2b)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to compute proposal hash for %v", params.ID)
 		if params.ProposalHash != nil && !bytes.Equal(params.ProposalHash, calculatedHash[:]) {
 			rt.Abortf(exitcode.ErrIllegalState, "hash does not match proposal params (ensure requester is an ID address)")
@@ -287,7 +287,7 @@ type AddSignerParams struct {
 
 func (a Actor) AddSigner(rt runtime.Runtime, params *AddSignerParams) *abi.EmptyValue {
 	// Can only be called by the multisig wallet itself.
-	rt.ValidateImmediateCallerIs(rt.Message().Receiver())
+	rt.ValidateImmediateCallerIs(rt.Receiver())
 	resolvedNewSigner, err := builtin.ResolveToIDAddr(rt, params.Signer)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve address %v", params.Signer)
 
@@ -313,7 +313,7 @@ type RemoveSignerParams struct {
 
 func (a Actor) RemoveSigner(rt runtime.Runtime, params *RemoveSignerParams) *abi.EmptyValue {
 	// Can only be called by the multisig wallet itself.
-	rt.ValidateImmediateCallerIs(rt.Message().Receiver())
+	rt.ValidateImmediateCallerIs(rt.Receiver())
 	resolvedOldSigner, err := builtin.ResolveToIDAddr(rt, params.Signer)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve address %v", params.Signer)
 
@@ -359,7 +359,7 @@ type SwapSignerParams struct {
 
 func (a Actor) SwapSigner(rt runtime.Runtime, params *SwapSignerParams) *abi.EmptyValue {
 	// Can only be called by the multisig wallet itself.
-	rt.ValidateImmediateCallerIs(rt.Message().Receiver())
+	rt.ValidateImmediateCallerIs(rt.Receiver())
 
 	fromResolved, err := builtin.ResolveToIDAddr(rt, params.From)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve from address %v", params.From)
@@ -398,7 +398,7 @@ type ChangeNumApprovalsThresholdParams struct {
 
 func (a Actor) ChangeNumApprovalsThreshold(rt runtime.Runtime, params *ChangeNumApprovalsThresholdParams) *abi.EmptyValue {
 	// Can only be called by the multisig wallet itself.
-	rt.ValidateImmediateCallerIs(rt.Message().Receiver())
+	rt.ValidateImmediateCallerIs(rt.Receiver())
 
 	var st State
 	rt.Transaction(&st, func() {
@@ -412,7 +412,7 @@ func (a Actor) ChangeNumApprovalsThreshold(rt runtime.Runtime, params *ChangeNum
 }
 
 func (a Actor) approveTransaction(rt runtime.Runtime, txnID TxnID, txn *Transaction) (bool, []byte, exitcode.ExitCode) {
-	caller := rt.Message().Caller()
+	caller := rt.Caller()
 
 	var st State
 	// abort duplicate approval
@@ -451,7 +451,7 @@ func getTransaction(rt runtime.Runtime, ptx *adt.Map, txnID TxnID, proposalHash 
 
 	// confirm the hashes match
 	if checkHash {
-		calculatedHash, err := ComputeProposalHash(&txn, rt.Syscalls().HashBlake2b)
+		calculatedHash, err := ComputeProposalHash(&txn, rt.HashBlake2b)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to compute proposal hash for %v", txnID)
 		if proposalHash != nil && !bytes.Equal(proposalHash, calculatedHash[:]) {
 			rt.Abortf(exitcode.ErrIllegalArgument, "hash does not match proposal params (ensure requester is an ID address)")

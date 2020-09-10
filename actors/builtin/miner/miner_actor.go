@@ -112,25 +112,25 @@ func (a Actor) Constructor(rt Runtime, params *ConstructorParams) *abi.EmptyValu
 	}
 
 	emptyBitfield := bitfield.NewFromSet(nil)
-	emptyBitfieldCid := rt.Store().Put(emptyBitfield)
+	emptyBitfieldCid := rt.Put(emptyBitfield)
 
 	emptyDeadline := ConstructDeadline(emptyArray)
-	emptyDeadlineCid := rt.Store().Put(emptyDeadline)
+	emptyDeadlineCid := rt.Put(emptyDeadline)
 
 	emptyDeadlines := ConstructDeadlines(emptyDeadlineCid)
 	emptyVestingFunds := ConstructVestingFunds()
-	emptyDeadlinesCid := rt.Store().Put(emptyDeadlines)
-	emptyVestingFundsCid := rt.Store().Put(emptyVestingFunds)
+	emptyDeadlinesCid := rt.Put(emptyDeadlines)
+	emptyVestingFundsCid := rt.Put(emptyVestingFunds)
 
 	currEpoch := rt.CurrEpoch()
-	offset, err := assignProvingPeriodOffset(rt.Message().Receiver(), currEpoch, rt.Syscalls().HashBlake2b)
+	offset, err := assignProvingPeriodOffset(rt.Receiver(), currEpoch, rt.HashBlake2b)
 	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to assign proving period offset")
 	periodStart := nextProvingPeriodStart(currEpoch, offset)
 	Assert(periodStart > currEpoch)
 
 	info, err := ConstructMinerInfo(owner, worker, controlAddrs, params.PeerId, params.Multiaddrs, params.SealProofType)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalArgument, "failed to construct initial miner info")
-	infoCid := rt.Store().Put(info)
+	infoCid := rt.Put(info)
 
 	state, err := ConstructState(infoCid, periodStart, emptyBitfieldCid, emptyArray, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalArgument, "failed to construct state")
@@ -1320,9 +1320,9 @@ func (a Actor) AddLockedFund(rt Runtime, amountToLock *abi.TokenAmount) *abi.Emp
 		rt.Abortf(exitcode.ErrIllegalArgument, "cannot lock up a negative amount of funds")
 	}
 
- 	vestingSchedule := &RewardVestingSpecV0
- 	if rt.NetworkVersion() >= network.Version1 {
- 		vestingSchedule = &RewardVestingSpecV1
+	vestingSchedule := &RewardVestingSpecV0
+	if rt.NetworkVersion() >= network.Version1 {
+		vestingSchedule = &RewardVestingSpecV1
 	}
 
 	var st State
@@ -1359,9 +1359,9 @@ func (a Actor) ReportConsensusFault(rt Runtime, params *ReportConsensusFaultPara
 	// Note: only the first reporter of any fault is rewarded.
 	// Subsequent invocations fail because the target miner has been removed.
 	rt.ValidateImmediateCallerType(builtin.CallerTypesSignable...)
-	reporter := rt.Message().Caller()
+	reporter := rt.Caller()
 
-	fault, err := rt.Syscalls().VerifyConsensusFault(params.BlockHeader1, params.BlockHeader2, params.BlockHeaderExtra)
+	fault, err := rt.VerifyConsensusFault(params.BlockHeader1, params.BlockHeader2, params.BlockHeaderExtra)
 	if err != nil {
 		rt.Abortf(exitcode.ErrIllegalArgument, "fault not verified: %s", err)
 	}
@@ -1860,12 +1860,12 @@ func havePendingEarlyTerminations(rt Runtime, st *State) bool {
 }
 
 func verifyWindowedPost(rt Runtime, challengeEpoch abi.ChainEpoch, sectors []*SectorOnChainInfo, proofs []proof.PoStProof) {
-	minerActorID, err := addr.IDFromAddress(rt.Message().Receiver())
+	minerActorID, err := addr.IDFromAddress(rt.Receiver())
 	AssertNoError(err) // Runtime always provides ID-addresses
 
 	// Regenerate challenge randomness, which must match that generated for the proof.
 	var addrBuf bytes.Buffer
-	receiver := rt.Message().Receiver()
+	receiver := rt.Receiver()
 	err = receiver.MarshalCBOR(&addrBuf)
 	AssertNoError(err)
 	postRandomness := rt.GetRandomnessFromBeacon(crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeEpoch, addrBuf.Bytes())
@@ -1888,7 +1888,7 @@ func verifyWindowedPost(rt Runtime, challengeEpoch abi.ChainEpoch, sectors []*Se
 	}
 
 	// Verify the PoSt Proof
-	if err = rt.Syscalls().VerifyPoSt(pvInfo); err != nil {
+	if err = rt.VerifyPoSt(pvInfo); err != nil {
 		rt.Abortf(exitcode.ErrIllegalArgument, "invalid PoSt %+v: %s", pvInfo, err)
 	}
 }
@@ -1920,11 +1920,11 @@ func getVerifyInfo(rt Runtime, params *SealVerifyStuff) *proof.SealVerifyInfo {
 
 	commD := requestUnsealedSectorCID(rt, params.RegisteredSealProof, params.DealIDs)
 
-	minerActorID, err := addr.IDFromAddress(rt.Message().Receiver())
+	minerActorID, err := addr.IDFromAddress(rt.Receiver())
 	AssertNoError(err) // Runtime always provides ID-addresses
 
 	buf := new(bytes.Buffer)
-	receiver := rt.Message().Receiver()
+	receiver := rt.Receiver()
 	err = receiver.MarshalCBOR(buf)
 	AssertNoError(err)
 

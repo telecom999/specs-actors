@@ -113,7 +113,7 @@ func (a Actor) CreateMiner(rt Runtime, params *CreateMinerParams) *CreateMinerRe
 			CodeCID:           builtin.StorageMinerActorCodeID,
 			ConstructorParams: ctorParamBuf.Bytes(),
 		},
-		rt.Message().ValueReceived(), // Pass on any value to the new actor.
+		rt.ValueReceived(), // Pass on any value to the new actor.
 	)
 	builtin.RequireSuccess(rt, code, "failed to init new actor")
 	var addresses initact.ExecReturn
@@ -148,7 +148,7 @@ type UpdateClaimedPowerParams struct {
 // May only be invoked by a miner actor.
 func (a Actor) UpdateClaimedPower(rt Runtime, params *UpdateClaimedPowerParams) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 	var st State
 	rt.Transaction(&st, func() {
 		claims, err := adt.AsMap(adt.AsStore(rt), st.Claims)
@@ -170,7 +170,7 @@ type EnrollCronEventParams struct {
 
 func (a Actor) EnrollCronEvent(rt Runtime, params *EnrollCronEventParams) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 	minerEvent := CronEvent{
 		MinerAddr:       minerAddr,
 		CallbackPayload: params.Payload,
@@ -240,7 +240,7 @@ func (a Actor) UpdatePledgeTotal(rt Runtime, pledgeDelta *abi.TokenAmount) *abi.
 
 func (a Actor) OnConsensusFault(rt Runtime, pledgeAmount *abi.TokenAmount) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 
 	var st State
 	rt.Transaction(&st, func() {
@@ -279,10 +279,10 @@ const GasOnSubmitVerifySeal = 34721049
 func (a Actor) SubmitPoRepForBulkVerify(rt Runtime, sealInfo *proof.SealVerifyInfo) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
 
-	minerAddr := rt.Message().Caller()
+	minerAddr := rt.Caller()
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		store := adt.AsStore(rt)
 		var mmap *adt.Multimap
 		if st.ProofValidationBatch == nil {
@@ -326,7 +326,7 @@ type CurrentTotalPowerReturn struct {
 func (a Actor) CurrentTotalPower(rt Runtime, _ *abi.EmptyValue) *CurrentTotalPowerReturn {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 
 	return &CurrentTotalPowerReturn{
 		RawBytePower:            st.ThisEpochRawBytePower,
@@ -346,7 +346,7 @@ func (a Actor) processBatchProofVerifies(rt Runtime) {
 	var miners []address.Address
 	verifies := make(map[address.Address][]proof.SealVerifyInfo)
 
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		store := adt.AsStore(rt)
 		if st.ProofValidationBatch == nil {
 			return
@@ -376,7 +376,7 @@ func (a Actor) processBatchProofVerifies(rt Runtime) {
 		st.ProofValidationBatch = nil
 	})
 
-	res, err := rt.Syscalls().BatchVerifySeals(verifies)
+	res, err := rt.BatchVerifySeals(verifies)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to batch verify")
 
 	for _, m := range miners {
@@ -418,7 +418,7 @@ func (a Actor) processDeferredCronEvents(rt Runtime) {
 
 	var cronEvents []CronEvent
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		events, err := adt.AsMultimap(adt.AsStore(rt), st.CronEventQueue)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load cron events")
 
@@ -456,7 +456,7 @@ func (a Actor) processDeferredCronEvents(rt Runtime) {
 			failedMinerCrons = append(failedMinerCrons, event.MinerAddr)
 		}
 	}
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		claims, err := adt.AsMap(adt.AsStore(rt), st.Claims)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load claims")
 
