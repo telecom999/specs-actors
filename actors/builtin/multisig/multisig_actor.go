@@ -121,7 +121,7 @@ func (a Actor) Constructor(rt runtime.Runtime, params *ConstructorParams) *abi.E
 		st.StartEpoch = rt.CurrEpoch()
 	}
 
-	rt.State().Create(&st)
+	rt.Create(&st)
 	return nil
 }
 
@@ -154,7 +154,7 @@ func (a Actor) Propose(rt runtime.Runtime, params *ProposeParams) *ProposeReturn
 	var txnID TxnID
 	var st State
 	var txn *Transaction
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		if !isSigner(proposer, st.Signers) {
 			rt.Abortf(exitcode.ErrForbidden, "%s is not a signer", proposer)
 		}
@@ -214,7 +214,7 @@ func (a Actor) Approve(rt runtime.Runtime, params *TxnIDParams) *ApproveReturn {
 
 	var st State
 	var txn *Transaction
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		callerIsSigner := isSigner(callerAddr, st.Signers)
 		if !callerIsSigner {
 			rt.Abortf(exitcode.ErrForbidden, "%s is not a signer", callerAddr)
@@ -246,7 +246,7 @@ func (a Actor) Cancel(rt runtime.Runtime, params *TxnIDParams) *abi.EmptyValue {
 	callerAddr := rt.Message().Caller()
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		callerIsSigner := isSigner(callerAddr, st.Signers)
 		if !callerIsSigner {
 			rt.Abortf(exitcode.ErrForbidden, "%s is not a signer", callerAddr)
@@ -292,7 +292,7 @@ func (a Actor) AddSigner(rt runtime.Runtime, params *AddSignerParams) *abi.Empty
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve address %v", params.Signer)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		isSigner := isSigner(resolvedNewSigner, st.Signers)
 		if isSigner {
 			rt.Abortf(exitcode.ErrForbidden, "%s is already a signer", resolvedNewSigner)
@@ -318,7 +318,7 @@ func (a Actor) RemoveSigner(rt runtime.Runtime, params *RemoveSignerParams) *abi
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve address %v", params.Signer)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		isSigner := isSigner(resolvedOldSigner, st.Signers)
 		if !isSigner {
 			rt.Abortf(exitcode.ErrForbidden, "%s is not a signer", resolvedOldSigner)
@@ -368,7 +368,7 @@ func (a Actor) SwapSigner(rt runtime.Runtime, params *SwapSignerParams) *abi.Emp
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to resolve to address %v", params.To)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		fromIsSigner := isSigner(fromResolved, st.Signers)
 		if !fromIsSigner {
 			rt.Abortf(exitcode.ErrForbidden, "from addr %s is not a signer", fromResolved)
@@ -401,7 +401,7 @@ func (a Actor) ChangeNumApprovalsThreshold(rt runtime.Runtime, params *ChangeNum
 	rt.ValidateImmediateCallerIs(rt.Message().Receiver())
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		if params.NewThreshold == 0 || params.NewThreshold > uint64(len(st.Signers)) {
 			rt.Abortf(exitcode.ErrIllegalArgument, "New threshold value not supported")
 		}
@@ -423,7 +423,7 @@ func (a Actor) approveTransaction(rt runtime.Runtime, txnID TxnID, txn *Transact
 	}
 
 	// add the caller to the list of approvers
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		ptx, err := adt.AsMap(adt.AsStore(rt), st.PendingTxns)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load pending transactions")
 
@@ -488,7 +488,7 @@ func executeTransactionIfApproved(rt runtime.Runtime, st State, txnID TxnID, txn
 		builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to deserialize result")
 
 		// This could be rearranged to happen inside the first state transaction, before the send().
-		rt.State().Transaction(&st, func() {
+		rt.Transaction(&st, func() {
 			ptx, err := adt.AsMap(adt.AsStore(rt), st.PendingTxns)
 			builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load pending transactions")
 

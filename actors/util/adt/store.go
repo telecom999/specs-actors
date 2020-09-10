@@ -58,7 +58,7 @@ func (r rtStore) Context() context.Context {
 func (r rtStore) Get(_ context.Context, c cid.Cid, out interface{}) error {
 	// The Go context is (un/fortunately?) dropped here.
 	// See https://github.com/filecoin-project/specs-actors/issues/140
-	if !r.Store().Get(c, out.(vmr.CBORUnmarshaler)) {
+	if !r.Runtime.Get(c, out.(vmr.CBORUnmarshaler)) {
 		r.Abortf(exitcode.ErrNotFound, "not found")
 	}
 	return nil
@@ -67,7 +67,7 @@ func (r rtStore) Get(_ context.Context, c cid.Cid, out interface{}) error {
 func (r rtStore) Put(_ context.Context, v interface{}) (cid.Cid, error) {
 	// The Go context is (un/fortunately?) dropped here.
 	// See https://github.com/filecoin-project/specs-actors/issues/140
-	return r.Store().Put(v.(vmr.CBORMarshaler)), nil
+	return r.Runtime.Put(v.(vmr.CBORMarshaler)), nil
 }
 
 // Keyer defines an interface required to put values in mapping.

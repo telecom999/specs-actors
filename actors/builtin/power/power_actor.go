@@ -75,7 +75,7 @@ func (a Actor) Constructor(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to construct state")
 
 	st := ConstructState(emptyMap, emptyMMapCid)
-	rt.State().Create(st)
+	rt.Create(st)
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (a Actor) CreateMiner(rt Runtime, params *CreateMinerParams) *CreateMinerRe
 	builtin.RequireNoErr(rt, err, exitcode.ErrSerialization, "failed to unmarshal exec return value %v", ret)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		claims, err := adt.AsMap(adt.AsStore(rt), st.Claims)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load claims")
 
@@ -150,7 +150,7 @@ func (a Actor) UpdateClaimedPower(rt Runtime, params *UpdateClaimedPowerParams) 
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
 	minerAddr := rt.Message().Caller()
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		claims, err := adt.AsMap(adt.AsStore(rt), st.Claims)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load claims")
 
@@ -182,7 +182,7 @@ func (a Actor) EnrollCronEvent(rt Runtime, params *EnrollCronEventParams) *abi.E
 	}
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		events, err := adt.AsMultimap(adt.AsStore(rt), st.CronEventQueue)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load cron events")
 
@@ -203,7 +203,7 @@ func (a Actor) OnEpochTickEnd(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	a.processBatchProofVerifies(rt)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		// update next epoch's power and pledge values
 		// this must come before the next epoch's rewards are calculated
 		// so that next epoch reward reflects power added this epoch
@@ -232,7 +232,7 @@ func (a Actor) OnEpochTickEnd(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 func (a Actor) UpdatePledgeTotal(rt Runtime, pledgeDelta *abi.TokenAmount) *abi.EmptyValue {
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		st.addPledgeTotal(*pledgeDelta)
 	})
 	return nil
@@ -243,7 +243,7 @@ func (a Actor) OnConsensusFault(rt Runtime, pledgeAmount *abi.TokenAmount) *abi.
 	minerAddr := rt.Message().Caller()
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		claims, err := adt.AsMap(adt.AsStore(rt), st.Claims)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load claims")
 

@@ -59,7 +59,7 @@ func (a Actor) Constructor(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to create state")
 
 	st := ConstructState(emptyArray, emptyMap, emptyMSet)
-	rt.State().Create(st)
+	rt.Create(st)
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (a Actor) WithdrawBalance(rt Runtime, params *WithdrawBalanceParams) *abi.E
 
 	amountExtracted := abi.NewTokenAmount(0)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		msm, err := st.mutator(adt.AsStore(rt)).withEscrowTable(WritePermission).
 			withLockedTable(WritePermission).build()
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load state")
@@ -120,7 +120,7 @@ func (a Actor) AddBalance(rt Runtime, providerOrClientAddress *addr.Address) *ab
 	nominal, _, _ := escrowAddress(rt, *providerOrClientAddress)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		msm, err := st.mutator(adt.AsStore(rt)).withEscrowTable(WritePermission).
 			withLockedTable(WritePermission).build()
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load state")
@@ -176,7 +176,7 @@ func (a Actor) PublishStorageDeals(rt Runtime, params *PublishStorageDealsParams
 
 	var newDealIds []abi.DealID
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		msm, err := st.mutator(adt.AsStore(rt)).withPendingProposals(WritePermission).
 			withDealProposals(WritePermission).withDealsByEpoch(WritePermission).withEscrowTable(WritePermission).
 			withLockedTable(WritePermission).build()
@@ -277,7 +277,7 @@ func (A Actor) VerifyDealsForActivation(rt Runtime, params *VerifyDealsForActiva
 	minerAddr := rt.Message().Caller()
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	store := adt.AsStore(rt)
 
 	dealWeight, verifiedWeight, err := ValidateDealsForActivation(&st, store, params.DealIDs, minerAddr, params.SectorExpiry, params.SectorStart)
@@ -305,7 +305,7 @@ func (a Actor) ActivateDeals(rt Runtime, params *ActivateDealsParams) *abi.Empty
 	store := adt.AsStore(rt)
 
 	// Update deal dealStates.
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		_, _, err := ValidateDealsForActivation(&st, store, params.DealIDs, minerAddr, params.SectorExpiry, currEpoch)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to validate dealProposals for activation")
 
@@ -359,7 +359,7 @@ func (a Actor) ComputeDataCommitment(rt Runtime, params *ComputeDataCommitmentPa
 	rt.ValidateImmediateCallerType(builtin.StorageMinerActorCodeID)
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	proposals, err := AsDealProposalArray(adt.AsStore(rt), st.Proposals)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load deal dealProposals")
 
@@ -395,7 +395,7 @@ func (a Actor) OnMinerSectorsTerminate(rt Runtime, params *OnMinerSectorsTermina
 	minerAddr := rt.Message().Caller()
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		msm, err := st.mutator(adt.AsStore(rt)).withDealStates(WritePermission).
 			withDealProposals(ReadOnlyPermission).build()
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to load deal state")
@@ -448,7 +448,7 @@ func (a Actor) CronTick(rt Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	var timedOutVerifiedDeals []*DealProposal
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		updatesNeeded := make(map[abi.ChainEpoch][]abi.DealID)
 
 		msm, err := st.mutator(adt.AsStore(rt)).withDealStates(WritePermission).

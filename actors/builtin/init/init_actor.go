@@ -35,7 +35,7 @@ func (a Actor) Constructor(rt runtime.Runtime, params *ConstructorParams) *abi.E
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to construct state")
 
 	st := ConstructState(emptyMap, params.NetworkName)
-	rt.State().Create(st)
+	rt.Create(st)
 	return nil
 }
 
@@ -67,7 +67,7 @@ func (a Actor) Exec(rt runtime.Runtime, params *ExecParams) *ExecReturn {
 	// Store mapping of pubkey or actor address to actor ID
 	var st State
 	var idAddr addr.Address
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		var err error
 		idAddr, err = st.MapAddressToNewID(adt.AsStore(rt), uniqueAddress)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to allocate ID address")

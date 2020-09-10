@@ -134,7 +134,7 @@ func (a Actor) Constructor(rt Runtime, params *ConstructorParams) *abi.EmptyValu
 
 	state, err := ConstructState(infoCid, periodStart, emptyBitfieldCid, emptyArray, emptyMap, emptyDeadlinesCid, emptyVestingFundsCid)
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalArgument, "failed to construct state")
-	rt.State().Create(state)
+	rt.Create(state)
 
 	// Register first cron callback for epoch before the first proving period starts.
 	enrollCronEvent(rt, periodStart-1, &CronEventPayload{
@@ -156,7 +156,7 @@ type GetControlAddressesReturn struct {
 func (a Actor) ControlAddresses(rt Runtime, _ *abi.EmptyValue) *GetControlAddressesReturn {
 	rt.ValidateImmediateCallerAcceptAny()
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	info := getMinerInfo(rt, &st)
 	return &GetControlAddressesReturn{
 		Owner:        info.Owner,
@@ -186,7 +186,7 @@ func (a Actor) ChangeWorkerAddress(rt Runtime, params *ChangeWorkerAddressParams
 
 	var st State
 	isWorkerChange := false
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 
 		// Only the Owner is allowed to change the newWorker and control addresses.
@@ -235,7 +235,7 @@ func (a Actor) ChangePeerID(rt Runtime, params *ChangePeerIDParams) *abi.EmptyVa
 	// TODO: Consider limiting the maximum number of bytes used by the peer ID on-chain.
 	// https://github.com/filecoin-project/specs-actors/issues/712
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
@@ -255,7 +255,7 @@ func (a Actor) ChangeMultiaddrs(rt Runtime, params *ChangeMultiaddrsParams) *abi
 	// TODO: Consider limiting the maximum number of bytes used by multiaddrs on-chain.
 	// https://github.com/filecoin-project/specs-actors/issues/712
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
@@ -323,7 +323,7 @@ func (a Actor) SubmitWindowedPoSt(rt Runtime, params *SubmitWindowedPoStParams) 
 	var postResult *PoStResult
 
 	var info *MinerInfo
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info = getMinerInfo(rt, &st)
 
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
@@ -489,7 +489,7 @@ func (a Actor) PreCommitSector(rt Runtime, params *SectorPreCommitInfo) *abi.Emp
 	store := adt.AsStore(rt)
 	var st State
 	newlyVested := big.Zero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
@@ -591,7 +591,7 @@ func (a Actor) ProveCommitSector(rt Runtime, params *ProveCommitSectorParams) *a
 
 	store := adt.AsStore(rt)
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 
 	// Verify locked funds are are at least the sum of sector initial pledges.
 	// Note that this call does not actually compute recent vesting, so the reported locked funds may be
@@ -657,7 +657,7 @@ func (a Actor) ConfirmSectorProofsValid(rt Runtime, params *builtin.ConfirmSecto
 	// a constant number of them.
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	store := adt.AsStore(rt)
 	info := getMinerInfo(rt, &st)
 
@@ -715,7 +715,7 @@ func (a Actor) ConfirmSectorProofsValid(rt Runtime, params *builtin.ConfirmSecto
 	totalPrecommitDeposit := big.Zero()
 	newSectors := make([]*SectorOnChainInfo, 0)
 	newlyVested := big.Zero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		// Schedule expiration for replaced sectors to the end of their next deadline window.
 		// They can't be removed right now because we want to challenge them immediately before termination.
 		err = st.RescheduleSectorExpirations(store, rt.CurrEpoch(), info.SectorSize, replaceSectors)
@@ -804,7 +804,7 @@ func (a Actor) CheckSectorProven(rt Runtime, params *CheckSectorProvenParams) *a
 	rt.ValidateImmediateCallerAcceptAny()
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	store := adt.AsStore(rt)
 	sectorNo := params.SectorNumber
 
@@ -867,7 +867,7 @@ func (a Actor) ExtendSectorExpiration(rt Runtime, params *ExtendSectorExpiration
 	pledgeDelta := big.Zero()
 	store := adt.AsStore(rt)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
@@ -1018,7 +1018,7 @@ func (a Actor) TerminateSectors(rt Runtime, params *TerminateSectorsParams) *Ter
 	store := adt.AsStore(rt)
 	currEpoch := rt.CurrEpoch()
 	powerDelta := NewPowerPairZero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		hadEarlyTerminations = havePendingEarlyTerminations(rt, &st)
 
 		info := getMinerInfo(rt, &st)
@@ -1103,7 +1103,7 @@ func (a Actor) DeclareFaults(rt Runtime, params *DeclareFaultsParams) *abi.Empty
 	store := adt.AsStore(rt)
 	var st State
 	newFaultPowerTotal := NewPowerPairZero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
 
@@ -1175,7 +1175,7 @@ func (a Actor) DeclareFaultsRecovered(rt Runtime, params *DeclareFaultsRecovered
 
 	store := adt.AsStore(rt)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
 
@@ -1236,7 +1236,7 @@ func (a Actor) CompactPartitions(rt Runtime, params *CompactPartitionsParams) *a
 
 	store := adt.AsStore(rt)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
 
@@ -1299,7 +1299,7 @@ func (a Actor) CompactSectorNumbers(rt Runtime, params *CompactSectorNumbersPara
 
 	store := adt.AsStore(rt)
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker)...)
 
@@ -1327,7 +1327,7 @@ func (a Actor) AddLockedFund(rt Runtime, amountToLock *abi.TokenAmount) *abi.Emp
 
 	var st State
 	newlyVested := big.Zero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		var err error
 		info := getMinerInfo(rt, &st)
 		rt.ValidateImmediateCallerIs(append(info.ControlAddresses, info.Owner, info.Worker, builtin.RewardActorAddr)...)
@@ -1378,7 +1378,7 @@ func (a Actor) ReportConsensusFault(rt Runtime, params *ReportConsensusFaultPara
 	builtin.RequireSuccess(rt, code, "failed to reward reporter")
 
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 
 	// Notify power actor with lock-up total being removed.
 	_, code = rt.Send(
@@ -1406,7 +1406,7 @@ func (a Actor) WithdrawBalance(rt Runtime, params *WithdrawBalanceParams) *abi.E
 	}
 	var info *MinerInfo
 	newlyVested := big.Zero()
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		var err error
 		info = getMinerInfo(rt, &st)
 		// Only the owner is allowed to withdraw the balance as it belongs to/is controlled by the owner
@@ -1490,7 +1490,7 @@ func processEarlyTerminations(rt Runtime) (more bool) {
 	)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		var err error
 		result, more, err = st.PopEarlyTerminations(store, AddressedPartitionsMax, AddressedSectorsMax)
 		builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to pop early terminations")
@@ -1576,7 +1576,7 @@ func handleProvingDeadline(rt Runtime) {
 	pledgeDelta := abi.NewTokenAmount(0)
 
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		var err error
 		{
 			// Vest locked funds.
@@ -1949,7 +1949,7 @@ func getVerifyInfo(rt Runtime, params *SealVerifyStuff) *proof.SealVerifyInfo {
 // Closes down this miner by erasing its power, terminating all its deals and burning its funds
 func terminateMiner(rt Runtime) {
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 
 	requestTerminateAllDeals(rt, &st)
 
@@ -1994,7 +1994,7 @@ func requestDealWeight(rt Runtime, dealIDs []abi.DealID, sectorStart, sectorExpi
 
 func commitWorkerKeyChange(rt Runtime) *abi.EmptyValue {
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		info := getMinerInfo(rt, &st)
 		// A previously scheduled key change could have been replaced with a new key change request
 		// scheduled in the future. This case should be treated as a no-op.

@@ -42,7 +42,7 @@ type Runtime interface {
 	// Information related to the current message being executed.
 	// When an actor invokes a method on another actor as a sub-call, these values reflect
 	// the sub-call context, rather than the top-level context.
-	Message() Message
+	Message
 
 	// The current chain epoch number. The genesis block has epoch zero.
 	CurrEpoch() abi.ChainEpoch
@@ -89,9 +89,9 @@ type Runtime interface {
 	GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness
 
 	// Provides a handle for the actor's state object.
-	State() StateHandle
+	StateHandle
 
-	Store() Store
+	Store
 
 	// Sends a message to another actor, returning the exit code and return value envelope.
 	// If the invoked method does not return successfully, its state changes (and that of any messages it sent in turn)
@@ -124,7 +124,7 @@ type Runtime interface {
 	DeleteActor(beneficiary addr.Address)
 
 	// Provides the system call interface.
-	Syscalls() Syscalls
+	Syscalls
 
 	// Returns the total token supply in circulation at the beginning of the current epoch.
 	// The circulating supply is the sum of:

@@ -54,7 +54,7 @@ func (pca *Actor) Constructor(rt runtime.Runtime, params *ConstructorParams) *ab
 	builtin.RequireNoErr(rt, err, exitcode.ErrIllegalState, "failed to create empty array")
 
 	st := ConstructState(from, to, emptyArrCid)
-	rt.State().Create(st)
+	rt.Create(st)
 
 	return nil
 }
@@ -133,7 +133,7 @@ type PaymentVerifyParams struct {
 
 func (pca Actor) UpdateChannelState(rt runtime.Runtime, params *UpdateChannelStateParams) *abi.EmptyValue {
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 
 	// both parties must sign voucher: one who submits it, the other explicitly signs it
 	rt.ValidateImmediateCallerIs(st.From, st.To)
@@ -193,7 +193,7 @@ func (pca Actor) UpdateChannelState(rt runtime.Runtime, params *UpdateChannelSta
 		builtin.RequireSuccess(rt, code, "spend voucher verification failed")
 	}
 
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		laneFound := true
 
 		lstates, err := adt.AsArray(adt.AsStore(rt), st.LaneStates)
@@ -283,7 +283,7 @@ func (pca Actor) UpdateChannelState(rt runtime.Runtime, params *UpdateChannelSta
 
 func (pca Actor) Settle(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	var st State
-	rt.State().Transaction(&st, func() {
+	rt.Transaction(&st, func() {
 		rt.ValidateImmediateCallerIs(st.From, st.To)
 
 		if st.SettlingAt != 0 {
@@ -300,7 +300,7 @@ func (pca Actor) Settle(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 
 func (pca Actor) Collect(rt runtime.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	var st State
-	rt.State().Readonly(&st)
+	rt.Readonly(&st)
 	rt.ValidateImmediateCallerIs(st.From, st.To)
 
 	if st.SettlingAt == 0 || rt.CurrEpoch() < st.SettlingAt {
